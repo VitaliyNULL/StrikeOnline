@@ -85,6 +85,7 @@ namespace StrikeOnline.Weapon
         {
             _particleSystem = GetComponentInChildren<ParticleSystem>();
             _playAudio = GetComponent<AudioSource>();
+            _playAudio.maxDistance = reloadingWeapon.Distance;
             _playAudio.volume = PlayerPrefs.HasKey(SoundValueKey) ? PlayerPrefs.GetFloat(SoundValueKey) : 0.5f;
             _canShoot = true;
             AllAmmo = reloadingWeapon.AmmoCapacity;
