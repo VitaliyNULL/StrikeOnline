@@ -25,7 +25,6 @@ namespace StrikeOnline.Weapon
         private Collider _colPhoton;
         private PlayerUIManager _playerUIManager;
         private Camera _camera;
-        private PhotonView _playerPhotonView;
 
         #endregion
 
@@ -72,7 +71,6 @@ namespace StrikeOnline.Weapon
         {
             _playerUIManager = GetComponentInParent<PlayerUIManager>();
             _camera = GetComponentInParent<PlayerCamera>().GetPlayerCamera();
-            _playerPhotonView = GetComponentInParent<PhotonView>();
         }
 
         private void Update()
@@ -217,11 +215,7 @@ namespace StrikeOnline.Weapon
                 RaycastHit hit;
                 if (Physics.Raycast(ray, out hit, reloadingWeapon.Distance))
                 {
-                    Collider col = hit.collider;
-                    if (col.GetComponent<PhotonView>() == _playerPhotonView.IsMine)
-                    {
-                        col.GetComponentInParent<IDamageable>()?.TakeDamage(reloadingWeapon.Damage);
-                    } 
+                    hit.collider.GetComponentInParent<IDamageable>()?.TakeDamage(reloadingWeapon.Damage);
                     photonView.RPC(nameof(RPCShoot), RpcTarget.All, hit.point, hit.normal);
                 }
 
