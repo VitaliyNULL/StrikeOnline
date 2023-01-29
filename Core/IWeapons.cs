@@ -1,11 +1,8 @@
-using UnityEngine;
-
 namespace StrikeOnline.Core
 {
     public interface IWeapon
     {
         void Damage();
-        void TakeWeaponDirection(Transform position);
     }
 
     public interface IReloadingWeapon : IWeapon

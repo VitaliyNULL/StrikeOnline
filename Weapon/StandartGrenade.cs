@@ -4,26 +4,35 @@ using UnityEngine;
 
 namespace StrikeOnline.Weapon
 {
-    public class StandartGrenade: MonoBehaviour,IThrowingWeapon
+    public class StandartGrenade : MonoBehaviour, IThrowingWeapon
     {
+        #region Private Fields
+
         [SerializeField] private ThrowingWeapon throwingWeapon;
+        [SerializeField] private new ParticleSystem particleSystem;
         private Transform _cameraPosition;
         private Rigidbody _rigidbody;
         private Collider _sphereCollider;
-        [SerializeField]private ParticleSystem _particleSystem;
+
+        #endregion
+
+        #region MonoBehaviour CallBacks
+
         private void Start()
         {
             _rigidbody = GetComponent<Rigidbody>();
             _sphereCollider = GetComponentInChildren<Collider>();
         }
 
-        public void Damage()
+        private void OnDrawGizmos()
         {
-            _rigidbody.useGravity = true;
-            _sphereCollider.isTrigger = false;
-              print("Excellent throw");
-            GrenadeExplosion();
+            Gizmos.color = Color.red;
+            Gizmos.DrawWireSphere(transform.position, 5f);
         }
+
+        #endregion
+
+        #region Private Methods
 
         private void GrenadeExplosion() => StartCoroutine(WaitForExplosion());
 
@@ -31,17 +40,9 @@ namespace StrikeOnline.Weapon
         {
             yield return new WaitForSeconds(5f);
             Explosion();
-            Instantiate(_particleSystem,transform.position,transform.rotation);
-            AudioSource.PlayClipAtPoint(throwingWeapon.ExplodeSound, transform.position);   
+            Instantiate(particleSystem, transform.position, transform.rotation);
+            AudioSource.PlayClipAtPoint(throwingWeapon.ExplodeSound, transform.position);
             Destroy(gameObject);
-        }
-
-        public void TakeWeaponDirection(Transform position) => _cameraPosition = position;
-        public void Throw()
-        {
-            _rigidbody.AddForce(_cameraPosition.transform.forward * throwingWeapon.Distance+_cameraPosition.transform.up, ForceMode.Impulse);
-            _rigidbody.AddTorque(_rigidbody.transform.right+_rigidbody.transform.forward,ForceMode.Impulse);
-            Damage();
         }
 
         private void Explosion()
@@ -52,13 +53,31 @@ namespace StrikeOnline.Weapon
                 IDamageable damageable = varCollider.GetComponentInParent<IDamageable>();
                 damageable?.TakeDamage(throwingWeapon.Damage);
             }
-
         }
 
-        private void OnDrawGizmos()
+        #endregion
+
+        #region IThrowingWeapon
+        public void Damage()
         {
-            Gizmos.color = Color.red;
-            Gizmos.DrawWireSphere(transform.position,5f);
+            _rigidbody.useGravity = true;
+            _sphereCollider.isTrigger = false;
+            print("Excellent throw");
+            GrenadeExplosion();
         }
+
+
+        public void Throw()
+        {
+            _rigidbody.AddForce(
+                _cameraPosition.transform.forward * throwingWeapon.Distance + _cameraPosition.transform.up,
+                ForceMode.Impulse);
+            _rigidbody.AddTorque(_rigidbody.transform.right + _rigidbody.transform.forward, ForceMode.Impulse);
+            Damage();
+        }
+        
+
+        #endregion
+
     }
 }

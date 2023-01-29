@@ -1,5 +1,5 @@
+using System.Collections;
 using Photon.Pun;
-using StrikeOnline.Player;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -15,54 +15,78 @@ namespace StrikeOnline.Managers
 
         #region Private Fields
 
-        private GameObject _instance;
-
-        [Tooltip("The prefab to use for representing the player")]
-        [SerializeField] private GameObject playerPrefab;
-
         #endregion
 
         #region MonoBehaviour Callbacks
 
-        private void Start()
+        private void Awake()
         {
-            Instance = this;
-
-            if (!PhotonNetwork.IsConnected)
+            if (Instance == null)
             {
-                SceneManager.LoadScene(0);
-                return;
-            }
-
-            if (playerPrefab == null)
-            {
-                Debug.LogError("Set prefab to GameManager");
+                DontDestroyOnLoad(gameObject);
+                Instance = this;
             }
             else
             {
-                if (PlayerManager.LocalPlayerInstance == null)
-                {
-                    PhotonNetwork.Instantiate(playerPrefab.name, new Vector3(0, 5, 0), Quaternion.identity);
-                }
+                Destroy(gameObject);
+                Debug.LogWarning("More than one GameManager on scene. Object was destroyed");
             }
+        }
+
+        public override void OnEnable()
+        {
+            base.OnEnable();
+            SceneManager.sceneLoaded += OnSceneLoaded;
+        }
+
+        public override void OnDisable()
+        {
+            base.OnDisable();
+            SceneManager.sceneLoaded -= OnSceneLoaded;
         }
 
         #endregion
 
-        #region MonobehaviourPunCallbacks Callbacks
+        #region MonoBehaviourPunCallbacks Callbacks
 
-        public override void OnPlayerEnteredRoom(global::Photon.Realtime.Player newPlayer)
+        public override void OnLeftRoom()
         {
-            Debug.Log(PhotonNetwork.LocalPlayer.NickName + " entered room");
+            Debug.Log("OnLeftRoom");
+            StartCoroutine(WaitToLeave());
         }
 
         #endregion
 
         #region Private Methods
 
+        private void OnSceneLoaded(Scene scene, LoadSceneMode loadSceneMode)
+        {
+            if (scene.buildIndex == 1)
+            {
+                PhotonNetwork.Instantiate("Player Manager", new Vector3(0, 5f, 0), Quaternion.identity);
+            }
+        }
+
+        private IEnumerator WaitToLeave()
+        {
+            while (PhotonNetwork.InRoom)
+            {
+                Debug.Log("Wait To Leave Cycle");
+                yield return null;
+            }
+
+            SceneManager.LoadScene(0);
+        }
+
         #endregion
 
         #region Public Methods
+
+        public void LeaveRoom()
+        {
+            Debug.Log("Leave Room");
+            PhotonNetwork.LeaveRoom();
+        }
 
         #endregion
     }

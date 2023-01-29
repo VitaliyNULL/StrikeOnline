@@ -1,15 +1,35 @@
+using System;
+using Photon.Pun;
+using StrikeOnline.UpdatedPlayer;
 using UnityEngine;
 
 namespace StrikeOnline.Weapon
 {
-    public class WeaponSway: MonoBehaviour
+    public class WeaponSway : MonoBehaviour
     {
-        [Header("Sway Settings")]
-        [SerializeField] private float smooth;
+        #region Private Fields
+
+        [Header("Sway Settings")] [SerializeField]
+        private float smooth;
+
+        [SerializeField] private PhotonView pV;
+        private PlayerManager _playerManager;
+
         [SerializeField] private float multiplier;
+
+        #endregion
+
+        #region MonoBehaviour Callbacks
+
+        private void Awake()
+        {
+            _playerManager = PhotonView.Find((int)pV.InstantiationData[0]).GetComponent<PlayerManager>();
+
+        }
 
         private void Update()
         {
+            if (_playerManager.GetExitMenuBool()) return;
             // get mouse input
             float mouseX = Input.GetAxisRaw("Mouse X") * multiplier;
             float mouseY = Input.GetAxisRaw("Mouse Y") * multiplier;
@@ -21,7 +41,10 @@ namespace StrikeOnline.Weapon
             Quaternion targetRotation = rotationX * rotationY;
 
             // rotate 
-            transform.localRotation = Quaternion.Slerp(transform.localRotation, targetRotation, smooth * Time.deltaTime);
+            transform.localRotation =
+                Quaternion.Slerp(transform.localRotation, targetRotation, smooth * Time.deltaTime);
         }
+
+        #endregion
     }
 }

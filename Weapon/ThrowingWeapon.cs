@@ -3,8 +3,10 @@ using UnityEngine;
 namespace StrikeOnline.Weapon
 {
     [CreateAssetMenu(menuName = "Weapon/ThrowingWeapon", fileName = "ThrowingWeapon")]
-    public class ThrowingWeapon: ScriptableObject
+    public class ThrowingWeapon : ScriptableObject
     {
+        #region Private Fields
+
         [SerializeField] private new string name;
         [SerializeField] private int damage;
         [SerializeField] private float distance;
@@ -12,7 +14,11 @@ namespace StrikeOnline.Weapon
         [SerializeField] private AudioClip throwGrenade;
         [SerializeField] private AudioClip beforeThrowGrenade;
         [SerializeField] private AudioClip explodeSound;
-        
+
+        #endregion
+
+        #region Public Properties
+
         public float Distance => distance;
         public float TimeToThrow => timeToThrow;
         public int Damage => damage;
@@ -21,6 +27,6 @@ namespace StrikeOnline.Weapon
         public AudioClip ExplodeSound => explodeSound;
         public AudioClip BeforeThrowGrenade => beforeThrowGrenade;
 
-
+        #endregion
     }
 }

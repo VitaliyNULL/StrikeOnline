@@ -5,6 +5,8 @@ namespace StrikeOnline.Weapon
     [CreateAssetMenu(menuName = "Weapon/ReloadingWeapon", fileName = "ReloadingWeapon")]
     public class ReloadingWeapon : ScriptableObject
     {
+        #region Private Fields
+
         [SerializeField] private new string name;
         [SerializeField] private int damage;
         [SerializeField] private float reloadTime;
@@ -15,6 +17,13 @@ namespace StrikeOnline.Weapon
         [SerializeField] private AudioClip shoot;
         [SerializeField] private AudioClip reload;
         [SerializeField] private AudioClip emptyShoot;
+        [SerializeField] private GameObject bulletImpact;
+
+        #endregion
+
+        #region Public Properties
+
+        public GameObject BulletImpact => bulletImpact;
         public AudioClip EmptyShoot => emptyShoot;
         public AudioClip Shoot => shoot;
         public AudioClip Reload => reload;
@@ -25,5 +34,8 @@ namespace StrikeOnline.Weapon
         public int AmmoCapacity => ammoCapacity;
         public int StorageCapacity => storageCapacity;
         public float TimeBetweenShoots => timeBetweenShots;
-    }
+
+
+        #endregion
+ }
 }

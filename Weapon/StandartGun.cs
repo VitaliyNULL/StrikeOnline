@@ -2,16 +2,16 @@ using System;
 using System.Collections;
 using Photon.Pun;
 using StrikeOnline.Core;
+using StrikeOnline.UpdatedPlayer;
 using UnityEngine;
 
 namespace StrikeOnline.Weapon
 {
-    public class StandartGun : MonoBehaviour, IReloadingWeapon, IPunObservable
+    public class StandartGun : MonoBehaviourPunCallbacks, IReloadingWeapon
     {
         #region Private Fields
 
         [SerializeField] private ReloadingWeapon reloadingWeapon;
-        private Transform _cameraDirection;
         private int _currentAmmoStore;
         private int _allAmmo;
         private AudioSource _playAudio;
@@ -19,9 +19,13 @@ namespace StrikeOnline.Weapon
         private ParticleSystem _particleSystem;
         private bool _canShoot;
         private bool _canReload;
+        private const string SoundValueKey = "soundValue";
         private Action _gunAction;
         private Rigidbody _rbPhoton;
         private Collider _colPhoton;
+        private PlayerUIManager _playerUIManager;
+        private Camera _camera;
+        private PhotonView _playerPhotonView;
 
         #endregion
 
@@ -49,13 +53,14 @@ namespace StrikeOnline.Weapon
                 if (_canShoot)
                 {
                     _currentAmmoStore = Mathf.Clamp(value, 0, reloadingWeapon.StorageCapacity);
-                    print($"{CurrentAmmo}/{AllAmmo}");
                 }
 
                 if (_currentAmmoStore != reloadingWeapon.StorageCapacity && AllAmmo != 0)
                 {
                     _canReload = true;
                 }
+
+                if (photonView.IsMine) _playerUIManager.UpdateAmmoBar(_currentAmmoStore, _allAmmo);
             }
         }
 
@@ -63,50 +68,63 @@ namespace StrikeOnline.Weapon
 
         #region MonoBehaviour Callbacks
 
+        private void Awake()
+        {
+            _playerUIManager = GetComponentInParent<PlayerUIManager>();
+            _camera = GetComponentInParent<PlayerCamera>().GetPlayerCamera();
+            _playerPhotonView = GetComponentInParent<PhotonView>();
+        }
+
+        private void Update()
+        {
+            if(!photonView.IsMine) return;
+            _playAudio.volume =  PlayerPrefs.GetFloat(SoundValueKey);
+        }
+
         private void Start()
         {
             _particleSystem = GetComponentInChildren<ParticleSystem>();
             _playAudio = GetComponent<AudioSource>();
+            _playAudio.volume = PlayerPrefs.HasKey(SoundValueKey) ? PlayerPrefs.GetFloat(SoundValueKey) : 0.5f;
             _canShoot = true;
             AllAmmo = reloadingWeapon.AmmoCapacity;
             CurrentAmmo = reloadingWeapon.StorageCapacity;
             _gunAction += Shoot;
+            if (photonView.IsMine) _playerUIManager.UpdateAmmoBar(_currentAmmoStore, _allAmmo);
         }
 
-        private void OnEnable()
+        private new void OnEnable()
         {
-            Debug.Log($"{this.name} enabled!");
+            if (_playAudio) _playAudio.maxDistance = reloadingWeapon.Distance;
+            if (photonView.IsMine)
+            {
+                _playerUIManager.UpdateGunName(reloadingWeapon.Name);
+                _playerUIManager.UpdateAmmoBar(_currentAmmoStore, _allAmmo);
+            }
+            _gunCoroutine = null;
+            Debug.Log($"{name} enabled!");
+            if (CurrentAmmo < reloadingWeapon.StorageCapacity)
+            {
+                _canReload = true;
+            }
+
+            if (CurrentAmmo > 0)
+            {
+                _canShoot = true;
+                _gunAction = null;
+            }
+
+            _gunAction += Shoot;
         }
 
-        private void OnDisable()
+        private new void OnDisable()
         {
-            Debug.Log($"{this.name} disabled!");
+            Debug.Log($"{name} disabled!");
         }
 
         #endregion
-        
+
         #region Private Methods
-
-        private void BetweenShoot()
-        {
-            if (_gunCoroutine == null)
-            {
-                _gunCoroutine = StartCoroutine(WaitBetweenShot());
-            }
-        }
-
-        private IEnumerator WaitBetweenShot()
-        {
-            _playAudio.PlayOneShot(reloadingWeapon.Shoot);
-            _canShoot = false;
-            yield return new WaitForSeconds(reloadingWeapon.TimeBetweenShoots);
-            if (CurrentAmmo != 0)
-            {
-                _canShoot = true;
-            }
-
-            _gunCoroutine = null;
-        }
 
         private void ReloadGun()
         {
@@ -116,13 +134,12 @@ namespace StrikeOnline.Weapon
 
         private IEnumerator WaitForReload()
         {
+            _playAudio.maxDistance = 20f;
             _gunAction -= Shoot;
             _canReload = false;
             _canShoot = false;
             yield return new WaitForSeconds(reloadingWeapon.ReloadTime);
-            print("COCK");
             _canShoot = true;
-            AllAmmo -= reloadingWeapon.StorageCapacity - CurrentAmmo;
             if (AllAmmo <= reloadingWeapon.StorageCapacity)
             {
                 CurrentAmmo = AllAmmo;
@@ -130,29 +147,15 @@ namespace StrikeOnline.Weapon
             }
             else
             {
+                AllAmmo -= reloadingWeapon.StorageCapacity - CurrentAmmo;
                 CurrentAmmo = reloadingWeapon.StorageCapacity;
             }
 
             print("Reload End");
             _gunCoroutine = null;
             _gunAction += Shoot;
+            _playAudio.maxDistance = reloadingWeapon.Distance;
         }
-
-        private void BetweenEmptyShoot()
-        {
-            if (CurrentAmmo == 0 && _gunCoroutine == null)
-            {
-                _gunCoroutine = StartCoroutine(WaitBetweenEmptyShoot());
-            }
-        }
-
-        private IEnumerator WaitBetweenEmptyShoot()
-        {
-            _playAudio.PlayOneShot(reloadingWeapon.EmptyShoot);
-            yield return new WaitForSeconds(reloadingWeapon.TimeBetweenShoots);
-            _gunCoroutine = null;
-        }
-
 
         private void ParticlePlay()
         {
@@ -169,27 +172,108 @@ namespace StrikeOnline.Weapon
             _particleSystem.Stop();
         }
 
+
+        private void BetweenEmptyShoot()
+        {
+            if (CurrentAmmo == 0 && _gunCoroutine == null)
+            {
+                _gunCoroutine = StartCoroutine(WaitBetweenEmptyShoot());
+            }
+        }
+
+        private IEnumerator WaitBetweenEmptyShoot()
+        {
+            photonView.RPC(nameof(RpcPlayBetweenEmptyShot), RpcTarget.All);
+            yield return new WaitForSeconds(reloadingWeapon.TimeBetweenShoots);
+            _gunCoroutine = null;
+        }
+
+        private void BetweenShoot()
+        {
+            _gunCoroutine ??= StartCoroutine(WaitBetweenShot());
+        }
+
+        private IEnumerator WaitBetweenShot()
+        {
+            photonView.RPC(nameof(RpcPlayBetweenShot), RpcTarget.All);
+            _canShoot = false;
+            yield return new WaitForSeconds(reloadingWeapon.TimeBetweenShoots);
+            if (CurrentAmmo != 0)
+            {
+                _canShoot = true;
+            }
+
+            _gunCoroutine = null;
+        }
+
         private void Shoot()
         {
             if (_canShoot)
             {
-                ParticlePlay();
+                Ray ray = _camera.ViewportPointToRay(new Vector3(0.5f, 0.5f));
+                ray.origin = _camera.transform.position;
                 RaycastHit hit;
-                if (Physics.Raycast(_cameraDirection.transform.position, _cameraDirection.transform.forward,
-                        out hit, reloadingWeapon.Distance))
+                if (Physics.Raycast(ray, out hit, reloadingWeapon.Distance))
                 {
-                    IDamageable damageable = hit.collider.GetComponentInParent<IDamageable>();
-                    damageable?.TakeDamage(reloadingWeapon.Damage);
+                    Collider col = hit.collider;
+                    if(col.GetComponent<PhotonView>() == _playerPhotonView.IsMine)return; 
+                    col.GetComponentInParent<IDamageable>()?.TakeDamage(reloadingWeapon.Damage);
+                    photonView.RPC(nameof(RPCShoot), RpcTarget.All, hit.point, hit.normal);
                 }
 
+                photonView.RPC(nameof(RpcParticlePlay), RpcTarget.All);
                 CurrentAmmo -= 1;
                 BetweenShoot();
             }
+
 
             BetweenEmptyShoot();
         }
 
         #endregion
+
+        #region PunRPC
+
+        [PunRPC]
+        public void RpcPlayBetweenShot()
+        {
+            _playAudio.PlayOneShot(reloadingWeapon.Shoot);
+        }
+
+        [PunRPC]
+        public void RpcPlayBetweenEmptyShot()
+        {
+            _playAudio.PlayOneShot(reloadingWeapon.EmptyShoot);
+        }
+
+        [PunRPC]
+        public void RpcPlayReload()
+        {
+            _playAudio.PlayOneShot(reloadingWeapon.Reload,0.5f);
+        }
+
+        [PunRPC]
+        public void RpcParticlePlay()
+        {
+            ParticlePlay();
+        }
+
+        [PunRPC]
+        public void RPCShoot(Vector3 hitPosition, Vector3 hitNormal)
+        {
+            Debug.Log("Yes,RPC SHOOT");
+            Collider[] colliders = Physics.OverlapSphere(hitPosition, 0.3f);
+            if (colliders.Length != 0)
+            {
+                GameObject bulletImpact = Instantiate(reloadingWeapon.BulletImpact, hitPosition + hitNormal * 0.001f,
+                    Quaternion.LookRotation(hitNormal, Vector3.up) * reloadingWeapon.BulletImpact.transform.rotation);
+                Destroy(bulletImpact, 10f);
+                bulletImpact.transform.SetParent(colliders[0].transform);
+            }
+        }
+
+        #endregion
+
 
         #region IReloadingWeapon
 
@@ -198,40 +282,15 @@ namespace StrikeOnline.Weapon
             _gunAction?.Invoke();
         }
 
-        public void TakeWeaponDirection(Transform position) => _cameraDirection = position;
-
         public void Reload()
         {
             if (_canReload)
             {
-                _playAudio.PlayOneShot(reloadingWeapon.Reload);
+                photonView.RPC(nameof(RpcPlayReload), RpcTarget.All);
                 ReloadGun();
             }
         }
 
         #endregion
-
-        #region IPunObservable
-
-        public void OnPhotonSerializeView(PhotonStream stream, PhotonMessageInfo info)
-        {
-            if (stream.IsWriting)
-            {
-                stream.SendNext(_rbPhoton);
-                stream.SendNext(_colPhoton);
-                stream.SendNext(_currentAmmoStore);
-                stream.SendNext(_allAmmo);
-            }
-            else if(stream.IsReading)
-            {
-                _rbPhoton = (Rigidbody)stream.ReceiveNext();
-                _colPhoton = (Collider)stream.ReceiveNext();
-                _currentAmmoStore = (int)stream.ReceiveNext();
-                _allAmmo = (int)stream.ReceiveNext();
-            }
-        }
-
-        #endregion
-        
     }
 }
