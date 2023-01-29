@@ -184,6 +184,7 @@ namespace StrikeOnline.Weapon
 
         private IEnumerator WaitBetweenEmptyShoot()
         {
+            _playAudio.maxDistance = 20f;
             photonView.RPC(nameof(RpcPlayBetweenEmptyShot), RpcTarget.All);
             yield return new WaitForSeconds(reloadingWeapon.TimeBetweenShoots);
             _gunCoroutine = null;
@@ -217,8 +218,10 @@ namespace StrikeOnline.Weapon
                 if (Physics.Raycast(ray, out hit, reloadingWeapon.Distance))
                 {
                     Collider col = hit.collider;
-                    if(col.GetComponent<PhotonView>() == _playerPhotonView.IsMine)return; 
-                    col.GetComponentInParent<IDamageable>()?.TakeDamage(reloadingWeapon.Damage);
+                    if (col.GetComponent<PhotonView>() == _playerPhotonView.IsMine)
+                    {
+                        col.GetComponentInParent<IDamageable>()?.TakeDamage(reloadingWeapon.Damage);
+                    } 
                     photonView.RPC(nameof(RPCShoot), RpcTarget.All, hit.point, hit.normal);
                 }
 
@@ -244,13 +247,13 @@ namespace StrikeOnline.Weapon
         [PunRPC]
         public void RpcPlayBetweenEmptyShot()
         {
-            _playAudio.PlayOneShot(reloadingWeapon.EmptyShoot);
+            _playAudio.PlayOneShot(reloadingWeapon.EmptyShoot, _playAudio.volume*0.5f);
         }
 
         [PunRPC]
         public void RpcPlayReload()
         {
-            _playAudio.PlayOneShot(reloadingWeapon.Reload,0.5f);
+            _playAudio.PlayOneShot(reloadingWeapon.Reload,_playAudio.volume*0.5f);
         }
 
         [PunRPC]

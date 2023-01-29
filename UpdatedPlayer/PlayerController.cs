@@ -140,7 +140,7 @@ namespace StrikeOnline.UpdatedPlayer
 
         private IEnumerator WaitForPlayFootSteps()
         {
-            _audioSource.PlayOneShot(footStepsSound);
+            _audioSource.PlayOneShot(footStepsSound, _audioSource.volume*0.7f);
             yield return new WaitForSeconds(footStepsSound.length);
             _audioCoroutine = null;
         }        
