@@ -28,6 +28,8 @@ namespace StrikeOnline.Managers
                 Debug.LogWarning("More than one Launcher on scene. Object was destroyed");
             }
 
+            Cursor.visible = true;
+            Cursor.lockState = CursorLockMode.None;
             PhotonNetwork.AutomaticallySyncScene = true;
         }
 

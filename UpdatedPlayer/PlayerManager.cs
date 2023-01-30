@@ -18,6 +18,7 @@ namespace StrikeOnline.UpdatedPlayer
         private int _deathCount;
         private bool _exitMenuOpened;
 
+
         #endregion
         
         #region MonoBehaviour Callbacks
@@ -28,6 +29,7 @@ namespace StrikeOnline.UpdatedPlayer
             {
                 Destroy(canvas.gameObject);
             }
+            
         }
 
         private void Start()

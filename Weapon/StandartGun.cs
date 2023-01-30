@@ -19,7 +19,6 @@ namespace StrikeOnline.Weapon
         private ParticleSystem _particleSystem;
         private bool _canShoot;
         private bool _canReload;
-        private const string SoundValueKey = "soundValue";
         private Action _gunAction;
         private Rigidbody _rbPhoton;
         private Collider _colPhoton;
@@ -72,19 +71,11 @@ namespace StrikeOnline.Weapon
             _playerUIManager = GetComponentInParent<PlayerUIManager>();
             _camera = GetComponentInParent<PlayerCamera>().GetPlayerCamera();
         }
-
-        private void Update()
-        {
-            if(!photonView.IsMine) return;
-            _playAudio.volume =  PlayerPrefs.GetFloat(SoundValueKey);
-        }
-
+        
         private void Start()
         {
             _particleSystem = GetComponentInChildren<ParticleSystem>();
             _playAudio = GetComponent<AudioSource>();
-            _playAudio.maxDistance = reloadingWeapon.Distance;
-            _playAudio.volume = PlayerPrefs.HasKey(SoundValueKey) ? PlayerPrefs.GetFloat(SoundValueKey) : 0.5f;
             _canShoot = true;
             AllAmmo = reloadingWeapon.AmmoCapacity;
             CurrentAmmo = reloadingWeapon.StorageCapacity;
@@ -94,7 +85,6 @@ namespace StrikeOnline.Weapon
 
         private new void OnEnable()
         {
-            if (_playAudio) _playAudio.maxDistance = reloadingWeapon.Distance;
             if (photonView.IsMine)
             {
                 _playerUIManager.UpdateGunName(reloadingWeapon.Name);
@@ -133,7 +123,6 @@ namespace StrikeOnline.Weapon
 
         private IEnumerator WaitForReload()
         {
-            _playAudio.maxDistance = 20f;
             _gunAction -= Shoot;
             _canReload = false;
             _canShoot = false;
@@ -182,7 +171,6 @@ namespace StrikeOnline.Weapon
 
         private IEnumerator WaitBetweenEmptyShoot()
         {
-            _playAudio.maxDistance = 20f;
             photonView.RPC(nameof(RpcPlayBetweenEmptyShot), RpcTarget.All);
             yield return new WaitForSeconds(reloadingWeapon.TimeBetweenShoots);
             _gunCoroutine = null;
@@ -235,19 +223,22 @@ namespace StrikeOnline.Weapon
         [PunRPC]
         public void RpcPlayBetweenShot()
         {
+            _playAudio.maxDistance = reloadingWeapon.Distance;
             _playAudio.PlayOneShot(reloadingWeapon.Shoot);
         }
 
         [PunRPC]
         public void RpcPlayBetweenEmptyShot()
         {
-            _playAudio.PlayOneShot(reloadingWeapon.EmptyShoot, _playAudio.volume*0.5f);
+            _playAudio.maxDistance = 20f;
+            _playAudio.PlayOneShot(reloadingWeapon.EmptyShoot, 0.5f);
         }
 
         [PunRPC]
         public void RpcPlayReload()
         {
-            _playAudio.PlayOneShot(reloadingWeapon.Reload,_playAudio.volume*0.5f);
+            _playAudio.maxDistance = 20f;
+            _playAudio.PlayOneShot(reloadingWeapon.Reload,0.5f);
         }
 
         [PunRPC]

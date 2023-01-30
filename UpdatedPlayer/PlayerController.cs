@@ -26,13 +26,13 @@ namespace StrikeOnline.UpdatedPlayer
         private float _currentSpeed;
         private float _verticalLookRotation;
         private readonly float _gravity = -9.81f;
-        private const string SoundValueKey = "soundValue";
         private AudioSource _audioSource;
         private PlayerManager _playerManager;
         private PhotonMessageInfo _messageInfo;
         private CharacterController _characterController;
         private Vector3 _velocity;
         private Coroutine _audioCoroutine;
+        private const string SoundValueKey = "soundValue";
 
         #endregion
 
@@ -44,7 +44,7 @@ namespace StrikeOnline.UpdatedPlayer
             set
             {
                 _health = Mathf.Clamp(value, 0, 100);
-                if(photonView.IsMine) playerUIManager.UpdateHealthBar((float)_health / MaxHealth);
+                if (photonView.IsMine) playerUIManager.UpdateHealthBar((float)_health / MaxHealth);
                 Debug.Log(_health);
                 if (_health == 0)
                 {
@@ -62,7 +62,14 @@ namespace StrikeOnline.UpdatedPlayer
             _characterController = GetComponent<CharacterController>();
             _playerManager = PhotonView.Find((int)photonView.InstantiationData[0]).GetComponent<PlayerManager>();
             _audioSource = GetComponent<AudioSource>();
-            _audioSource.volume = PlayerPrefs.HasKey(SoundValueKey) ? PlayerPrefs.GetFloat(SoundValueKey) : 0.5f;
+            if (PlayerPrefs.HasKey(SoundValueKey))
+            {
+                AudioListener.volume = PlayerPrefs.GetFloat(SoundValueKey);
+            }
+            else
+            {
+                PlayerPrefs.SetFloat(SoundValueKey, 1f);
+            }
         }
 
         private void Start()
@@ -75,15 +82,14 @@ namespace StrikeOnline.UpdatedPlayer
         private void Update()
         {
             if (!photonView.IsMine) return;
+            Gravity();
             if (_playerManager.GetExitMenuBool())
                 return;
+            AudioListener.volume = PlayerPrefs.GetFloat(SoundValueKey);
             MyInput();
             Jump();
             Move();
-            Gravity();
-            _audioSource.volume =  PlayerPrefs.GetFloat(SoundValueKey);
         }
-        
 
         #endregion
 
@@ -100,23 +106,24 @@ namespace StrikeOnline.UpdatedPlayer
         {
             if (Input.GetKey(KeyCode.Space) && _grounded)
             {
-                photonView.RPC(nameof(RPCPlayJumpSound),RpcTarget.All);
+                photonView.RPC(nameof(RPCPlayJumpSound), RpcTarget.All);
                 _velocity.y = Mathf.Sqrt(jumpHeight * -2.0f * _gravity);
             }
         }
+
         private void Move()
         {
-
             Vector3 moveDirection = transform.right * _horizontalInput + transform.forward * _verticalInput;
-            if (_grounded && moveDirection !=Vector3.zero)
+            if (_grounded && moveDirection != Vector3.zero)
             {
-                photonView.RPC(nameof(RPCPlayFootStepsSound),RpcTarget.All);
+                photonView.RPC(nameof(RPCPlayFootStepsSound), RpcTarget.All);
             }
-            else if(_grounded&& moveDirection == Vector3.zero)
+            else if (_grounded && moveDirection == Vector3.zero)
             {
                 _audioSource.Stop();
                 _audioCoroutine = null;
             }
+
             _currentSpeed = Input.GetKey(KeyCode.LeftShift) ? sprintSpeed : walkSpeed;
             _characterController.Move(moveDirection * _currentSpeed * Time.deltaTime);
         }
@@ -127,7 +134,7 @@ namespace StrikeOnline.UpdatedPlayer
             _horizontalInput = Input.GetAxis("Horizontal");
             _verticalInput = Input.GetAxis("Vertical");
         }
-        
+
         private void Gravity()
         {
             _velocity.y += _gravity * Time.deltaTime;
@@ -140,17 +147,17 @@ namespace StrikeOnline.UpdatedPlayer
 
         private IEnumerator WaitForPlayFootSteps()
         {
-            _audioSource.PlayOneShot(footStepsSound, _audioSource.volume*0.7f);
+            _audioSource.PlayOneShot(footStepsSound, 0.7f);
             yield return new WaitForSeconds(footStepsSound.length);
             _audioCoroutine = null;
-        }        
+        }
+
         private IEnumerator WaitForPlayJumpSound()
         {
             _audioSource.PlayOneShot(jumpSound);
             yield return new WaitForSeconds(jumpSound.length);
             _audioCoroutine = null;
         }
-
 
         #endregion
 
@@ -161,7 +168,6 @@ namespace StrikeOnline.UpdatedPlayer
             _grounded = grounded;
         }
 
-        
         #endregion
 
         #region IDamagable
@@ -196,6 +202,7 @@ namespace StrikeOnline.UpdatedPlayer
             _audioSource.Stop();
             _audioCoroutine = StartCoroutine(WaitForPlayJumpSound());
         }
+
         #endregion
     }
 }
